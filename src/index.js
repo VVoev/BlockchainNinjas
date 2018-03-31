@@ -23,20 +23,29 @@ app.get('/', (req, res) => {
  * Endpoint to receive /helpdesk slash command from Slack.
  * Checks verification token and opens a dialog to capture more info.
  */
-app.post('/', (req, res) => {
+app.post('/', async (req, res) => {
   // extract the verification token, slash command text,
   // and trigger ID from payload
   const { token, text, trigger_id } = req.body;
   console.log(token, text);
 
+  let users;
+
   // check that the verification token matches expected value
   if (token === process.env.SLACK_VERIFICATION_TOKEN) {
     //get users list
-    var userList;
     var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
-    var readUsers = axios.get(url).then( res => {
-      userList = res.data.members;
+    
+    var readUsers = await axios.get(url).then( res => {
+      users = res.data.members.filter(user => !user.is_bot && user.profile.email).map(user => {
+        return {
+            label: user.real_name,
+            value: user.name
+          }
+      });
   }); 
+
+  console.log(users);
     // create the dialog payload - includes the dialog structure, Slack API token,
     // and trigger ID
     const dialog = {
@@ -64,11 +73,7 @@ app.post('/', (req, res) => {
             label: 'recepient',
             type: 'select',
             name: 'recepient',
-            options: [
-              { label: 'Low', value: 'Low' },
-              { label: 'Medium', value: 'Medium' },
-              { label: 'High', value: 'High' },
-            ],
+            options: users,
           },
         ],
       }),
