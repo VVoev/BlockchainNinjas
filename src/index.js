@@ -36,32 +36,22 @@ app.post('/', (req, res) => {
       token: process.env.SLACK_ACCESS_TOKEN,
       trigger_id,
       dialog: JSON.stringify({
-        title: 'Submit a helpdesk ticket',
+        title: 'Send Payment',
         callback_id: 'submit-ticket',
         submit_label: 'Submit',
         elements: [
           {
-            label: 'Title',
+            label: 'To whom',
             type: 'text',
             name: 'title',
             value: text,
             hint: '30 second summary of the problem',
           },
           {
-            label: 'Description',
+            label: 'Short Description',
             type: 'textarea',
             name: 'description',
             optional: true,
-          },
-          {
-            label: 'Urgency',
-            type: 'select',
-            name: 'urgency',
-            options: [
-              { label: 'Low', value: 'Low' },
-              { label: 'Medium', value: 'Medium' },
-              { label: 'High', value: 'High' },
-            ],
           },
         ],
       }),
