@@ -27,44 +27,63 @@ app.post('/', (req, res) => {
   // extract the verification token, slash command text,
   // and trigger ID from payload
   const { token, text, trigger_id } = req.body;
+  console.log(token, text);
 
   // check that the verification token matches expected value
   if (token === process.env.SLACK_VERIFICATION_TOKEN) {
+    //get users list
+    var userList;
+    var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
+    var readUsers = axios.get(url).then( res => {
+      userList = res.data.members;
+  }); 
     // create the dialog payload - includes the dialog structure, Slack API token,
     // and trigger ID
     const dialog = {
       token: process.env.SLACK_ACCESS_TOKEN,
       trigger_id,
       dialog: JSON.stringify({
-        title: 'Send Payment',
+        title: 'Submit a helpdesk ticket',
         callback_id: 'submit-ticket',
         submit_label: 'Submit',
         elements: [
           {
-            label: 'To whom',
+            label: 'Amount',
             type: 'text',
             name: 'title',
             value: text,
-            hint: '30 second summary of the problem',
+            hint: 'Amount of eth',
           },
           {
-            label: 'Short Description',
+            label: 'Reason',
             type: 'textarea',
-            name: 'description',
+            name: 'reason',
             optional: true,
+          },
+          {
+            label: 'recepient',
+            type: 'select',
+            name: 'recepient',
+            options: [
+              { label: 'Low', value: 'Low' },
+              { label: 'Medium', value: 'Medium' },
+              { label: 'High', value: 'High' },
+            ],
           },
         ],
       }),
     };
-
+    console.log("opening dialog", dialog);
     // open the dialog by calling dialogs.open method and sending the payload
     axios.post('https://slack.com/api/dialog.open', qs.stringify(dialog))
       .then((result) => {
         debug('dialog.open: %o', result.data);
         res.send('');
+        console.log('dialog open');
       }).catch((err) => {
         debug('dialog.open call failed: %o', err);
         res.sendStatus(500);
+        console.log('error');
       });
   } else {
     debug('Verification token mismatch');
