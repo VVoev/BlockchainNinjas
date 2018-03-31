@@ -4,7 +4,6 @@ const axios = require('axios');
 const express = require('express');
 const bodyParser = require('body-parser');
 const qs = require('querystring');
-const ticket = require('./ticket');
 const debug = require('debug')('slash-command-template:index');
 
 const app = express();
@@ -17,7 +16,7 @@ app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
   res.send('<h2>The Slash Command and Dialog app is running</h2> <p>Follow the' +
-  ' instructions in the README to configure the Slack App and your environment variables.</p>');
+    ' instructions in the README to configure the Slack App and your environment variables.</p>');
 });
 
 /*
