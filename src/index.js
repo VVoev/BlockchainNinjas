@@ -43,14 +43,14 @@ app.post('/', (req, res) => {
       token: process.env.SLACK_ACCESS_TOKEN,
       trigger_id,
       dialog: JSON.stringify({
-        title: 'Submit a helpdesk ticket',
+        title: 'Send eth',
         callback_id: 'submit-ticket',
         submit_label: 'Submit',
         elements: [
           {
             label: 'Amount',
             type: 'text',
-            name: 'title',
+            name: 'amount',
             value: text,
             hint: 'Amount of eth',
           },
@@ -104,10 +104,11 @@ app.post('/interactive-component', (req, res) => {
 
     // immediately respond with a empty 200 response to let
     // Slack know the command was received
-    res.send('');
+    res.send('');   
 
     // create Helpdesk ticket
-    ticket.create(body.user.id, body.submission);
+    //ticket.create(body.user.id, body.submission);
+    console.log(req.body.payload);
   } else {
     debug('Token mismatch');
     res.sendStatus(500);
