@@ -5,7 +5,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const qs = require('querystring');
 const debug = require('debug')('slash-command-template:index');
-const { transferEther, getBalance, toEther } = require('./account-transactions');
+const { transferEther, getBalance, toEther, getTransactionAddress, getWallet } = require('./account-transactions');
 const { IncomingWebhook, WebClient } = require('@slack/client');
 
 const app = express();
@@ -37,6 +37,8 @@ app.post('/', async(req, res) => {
     if (token === process.env.SLACK_VERIFICATION_TOKEN) {
         //get users list
         var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
+
+        console.log(url);        
 
         var readUsers = await axios.get(url).then(res => {
         users = res.data.members.filter(user => user.profile.email && user.id != senderId).map(user => {
@@ -107,12 +109,24 @@ app.post('/balance', async(req, res) => {
     return res.status(200).send(`Your balance: ${Number(ethBalance).toFixed(2)} ETH`);
 });
 
+app.post('/wallet', async(req, res) => {
+    const { user_name } = req.body;
+
+    if (!user_name) {
+        return res.status(400).send({ ok: false, message: 'No payload' });
+    }
+
+    const walletAddress = await getWallet(user_name);
+    return res.status(200).send(`Your wallet address is: ${walletAddress}`);
+});
+
 /*
  * Endpoint to receive the dialog submission. Checks the verification token
  * and creates a Helpdesk ticket
  */
 app.post('/interactive-component', async(req, res) => {
     const body = JSON.parse(req.body.payload);
+    const { token, text, trigger_id } = req.body;
 
     // check that the verification token matches expected value
     if (body.token === process.env.SLACK_VERIFICATION_TOKEN) {
@@ -121,12 +135,7 @@ app.post('/interactive-component', async(req, res) => {
         // immediately respond with a empty 200 response to let
         // Slack know the command was received
         res.send('');
-        sendSuccessNotification({
-          "title": "EtherScan link",
-          "title_link": "enter link",
-          "text": `transaction started.`,
-          "color": "#7CD197"
-      })
+       
 
         // create Helpdesk ticket
         const payload = JSON.parse(req.body.payload);
@@ -134,14 +143,22 @@ app.post('/interactive-component', async(req, res) => {
         const recepient = payload.submission.recepient;
         const sender = payload.user.name;
 
+        const transactionUrl = getTransactionAddress(sender);
+        sendSuccessNotification({
+          "title": "EtherScan link",
+          "title_link": transactionUrl,
+          "text": `transaction started.`,
+          "color": "#7CD197"
+      });
+
         await transferEther(sender, recepient, amount);
         setTimeout(() => sendSuccessNotification({
           "image_url": "https://media.tenor.com/images/02ca5bd36fe406a776a1e007d009ef78/tenor.gif",
           "text": `${sender} send ${amount} ether to ${recepient}.`,
           "color": "#7CD197"
-      }), 1000);
-        return res.status(200).end({ ok: true, message: 'ethers transfered successfully!' });
+      }), 45000);
 
+        return res.status(200).end({ ok: true, message: 'ethers transfered successfully!' });
     } else {
         debug('Token mismatch');
         res.sendStatus(500);
