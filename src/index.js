@@ -5,7 +5,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const qs = require('querystring');
 const debug = require('debug')('slash-command-template:index');
-const { transferEther, getBalance, toEther } = require('./account-transactions');
+const { transferEther, getBalance, getTransactionAddress, getWallet, toEther } = require('./account-transactions');
 
 const app = express();
 
@@ -37,7 +37,10 @@ app.post('/', async(req, res) => {
         //get users list
         var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
 
+        console.log(url);        
+
         var readUsers = await axios.get(url).then(res => {
+        console.log(res.data.members);
         users = res.data.members.filter(user => !user.is_both && user.name !== 'slackbot' && user.id != senderId).map(user => {
                 return {
                     label: user.real_name,
@@ -106,12 +109,24 @@ app.post('/balance', async(req, res) => {
     return res.status(200).send(`Your balance: ${Number(ethBalance).toFixed(2)} ETH`);
 });
 
+app.post('/wallet', async(req, res) => {
+    const { user_name } = req.body;
+
+    if (!user_name) {
+        return res.status(400).send({ ok: false, message: 'No payload' });
+    }
+
+    const walletAddress = await getWallet(user_name);
+    return res.status(200).send(`Your wallet address is: ${walletAddress}`);
+});
+
 /*
  * Endpoint to receive the dialog submission. Checks the verification token
  * and creates a Helpdesk ticket
  */
 app.post('/interactive-component', async(req, res) => {
     const body = JSON.parse(req.body.payload);
+    const { token, text, trigger_id } = req.body;
 
     // check that the verification token matches expected value
     if (body.token === process.env.SLACK_VERIFICATION_TOKEN) {
@@ -120,16 +135,15 @@ app.post('/interactive-component', async(req, res) => {
         // immediately respond with a empty 200 response to let
         // Slack know the command was received
         res.send('');
-
-        // create Helpdesk ticket
+        // create transaction
         const payload = JSON.parse(req.body.payload);
         const amount = payload.submission.amount;
         const recepient = payload.submission.recepient;
         const sender = payload.user.name;
 
         await transferEther(sender, recepient, amount);
+        //return res.status(200).send('transaction started successfully');
         return res.status(200).end({ ok: true, message: 'ethers transfered successfully!' });
-
     } else {
         debug('Token mismatch');
         res.sendStatus(500);

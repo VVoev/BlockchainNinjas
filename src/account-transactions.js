@@ -32,6 +32,16 @@ const registerUser = (username) => {
     return slackAccounts[username];
 };
 
+const getWallet = (username) => {
+    return slackAccounts[username].address;
+};
+
+const getTransactionAddress = (username) => {
+    const walletAddress = getWallet(username);
+    const urlTransaction = "https://rinkeby.etherscan.io/address/" + walletAddress;
+    return urlTransaction;
+}
+
 const toEther = (weiAmount) => {
     return web3.utils.fromWei(weiAmount, 'ether');
 }
@@ -110,5 +120,7 @@ function send(from, to, amount) {
 module.exports = {
     transferEther,
     getBalance,
+    getTransactionAddress,
+    getWallet,
     toEther
 };
