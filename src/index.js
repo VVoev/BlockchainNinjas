@@ -7,50 +7,22 @@ const qs = require('querystring');
 const debug = require('debug')('slash-command-template:index');
 const { transferEther, getBalance, toEther, getTransactionAddress, getWallet } = require('./account-transactions');
 const { IncomingWebhook, WebClient } = require('@slack/client');
-
+const { getUsers } = require('./users');
 const app = express();
  
-/*
- * Parse application/x-www-form-urlencoded && application/json
- */
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.get('/', (req, res) => {
-    res.send('<h2>The Slash Command and Dialog app is running</h2> <p>Follow the' +
-        ' instructions in the README to configure the Slack App and your environment variables.</p>');
-});
+app.post('/', async (req, res) => {
 
-/*
- * Endpoint to receive /helpdesk slash command from Slack.
- * Checks verification token and opens a dialog to capture more info.
- */
-app.post('/', async(req, res) => {
-    // extract the verification token, slash command text,
-    // and trigger ID from payload
     const { token, text, trigger_id } = req.body;
     const senderId = req.body.user_id;
-    console.log('senderId',senderId);
-    let users;
 
-    // check that the verification token matches expected value
     if (token === process.env.SLACK_VERIFICATION_TOKEN) {
-        //get users list
         var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
 
-        console.log(url);        
+        const users = await getUsers(senderId, url);
 
-        var readUsers = await axios.get(url).then(res => {
-        users = res.data.members.filter(user => user.profile.email && user.id != senderId).map(user => {
-                return {
-                    label: user.real_name,
-                    value: user.name
-                }
-            });
-        });
-
-        // create the dialog payload - includes the dialog structure, Slack API token,
-        // and trigger ID
         const dialog = {
             token: process.env.SLACK_ACCESS_TOKEN,
             trigger_id,
@@ -80,7 +52,7 @@ app.post('/', async(req, res) => {
                 ],
             }),
         };
-        // open the dialog by calling dialogs.open method and sending the payload
+
         axios.post('https://slack.com/api/dialog.open', qs.stringify(dialog))
             .then((result) => {
                 debug('dialog.open: %o', result.data);
@@ -120,24 +92,14 @@ app.post('/wallet', async(req, res) => {
     return res.status(200).send(`Your wallet address is: ${walletAddress}`);
 });
 
-/*
- * Endpoint to receive the dialog submission. Checks the verification token
- * and creates a Helpdesk ticket
- */
 app.post('/interactive-component', async(req, res) => {
     const body = JSON.parse(req.body.payload);
     const { token, text, trigger_id } = req.body;
 
-    // check that the verification token matches expected value
     if (body.token === process.env.SLACK_VERIFICATION_TOKEN) {
         debug(`Form submission received: ${body.submission.trigger_id}`);
-
-        // immediately respond with a empty 200 response to let
-        // Slack know the command was received
         res.send('');
-       
 
-        // create Helpdesk ticket
         const payload = JSON.parse(req.body.payload);
         const amount = payload.submission.amount;
         const recepient = payload.submission.recepient;
@@ -156,7 +118,7 @@ app.post('/interactive-component', async(req, res) => {
           "image_url": "https://media.tenor.com/images/02ca5bd36fe406a776a1e007d009ef78/tenor.gif",
           "text": `${sender} send ${amount} ether to ${recepient}.`,
           "color": "#7CD197"
-      }), 45000);
+      }), 55000);
 
         return res.status(200).end({ ok: true, message: 'ethers transfered successfully!' });
     } else {

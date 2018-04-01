@@ -1,10 +1,19 @@
 const qs = require('querystring');
 const axios = require('axios');
 
-const find = (slackUserId) => {
-  const body = { token: process.env.SLACK_ACCESS_TOKEN, user: slackUserId };
-  const promise = axios.post('https://slack.com/api/users.info', qs.stringify(body));
-  return promise;
+const getUsers = async (senderId, url) => {
+  return await axios.get(url).then(res => {
+    return res
+              .data
+              .members
+              .filter(user => user.profile.email && user.id != senderId)
+              .map(user => {
+                return {
+                  label: user.real_name,
+                  value: user.name
+                }
+              });
+    });
 };
 
-module.exports = { find };
+module.exports = { getUsers };

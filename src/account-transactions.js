@@ -69,17 +69,13 @@ function send(from, to, amount) {
     return new Promise((resolve, reject) => {
 
         const Tx = require('ethereumjs-tx')
-            // the address that will send the test transaction
         const addressFrom = from.address;
         const {
             privateKey
         } = from;
 
-        // the destination address
         const addressTo = to.address;
 
-        // Signs the given transaction data and sends it. Abstracts some of the details 
-        // of buffering and serializing the transaction for web3.
         function sendSigned(txData, cb) {
             const privKey = new Buffer(privateKey, 'hex')
             const transaction = new Tx(txData)
@@ -89,10 +85,8 @@ function send(from, to, amount) {
             return web3.eth.sendSignedTransaction('0x' + serializedTx, cb)
         }
 
-        // get the number of transactions sent so far so we can create a fresh nonce
         web3.eth.getTransactionCount(addressFrom).then(txCount => {
-            // construct the transaction data
-        const weis = (amount * 1000000000000000000).toString();
+            const weis = (amount * 1000000000000000000).toString();
 
             const txData = {
                 nonce: web3.utils.toHex(txCount).toString(),
@@ -103,7 +97,6 @@ function send(from, to, amount) {
                 value: web3.utils.toHex(weis)
             }
 
-            // fire away!
             sendSigned(txData, function(err, result) {
                 if (err) {
                     console.log('error', err);
