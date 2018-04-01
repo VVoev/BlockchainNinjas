@@ -5,6 +5,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const qs = require('querystring');
 const debug = require('debug')('slash-command-template:index');
+const {transferEther, getBalance} = require('./account-transactions');
 
 const app = express();
 
@@ -27,7 +28,6 @@ app.post('/', async (req, res) => {
   // extract the verification token, slash command text,
   // and trigger ID from payload
   const { token, text, trigger_id } = req.body;
-  console.log(token, text);
 
   let users;
 
@@ -37,7 +37,7 @@ app.post('/', async (req, res) => {
     var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
     
     var readUsers = await axios.get(url).then( res => {
-      users = res.data.members.filter(user => !user.is_bot && user.profile.email).map(user => {
+      users = res.data.members.filter(user => !user.is_bot).map(user => {
         return {
             label: user.real_name,
             value: user.name
@@ -45,7 +45,6 @@ app.post('/', async (req, res) => {
       });
   }); 
 
-  console.log(users);
     // create the dialog payload - includes the dialog structure, Slack API token,
     // and trigger ID
     const dialog = {
@@ -78,13 +77,11 @@ app.post('/', async (req, res) => {
         ],
       }),
     };
-    console.log("opening dialog", dialog);
     // open the dialog by calling dialogs.open method and sending the payload
     axios.post('https://slack.com/api/dialog.open', qs.stringify(dialog))
       .then((result) => {
         debug('dialog.open: %o', result.data);
         res.send('');
-        console.log('dialog open');
       }).catch((err) => {
         debug('dialog.open call failed: %o', err);
         res.sendStatus(500);
@@ -100,7 +97,7 @@ app.post('/', async (req, res) => {
  * Endpoint to receive the dialog submission. Checks the verification token
  * and creates a Helpdesk ticket
  */
-app.post('/interactive-component', (req, res) => {
+app.post('/interactive-component', async (req, res) => {
   const body = JSON.parse(req.body.payload);
 
   // check that the verification token matches expected value
@@ -112,8 +109,14 @@ app.post('/interactive-component', (req, res) => {
     res.send('');   
 
     // create Helpdesk ticket
-    //ticket.create(body.user.id, body.submission);
-    console.log(req.body.payload);
+    const payload = JSON.parse(req.body.payload);
+    const amount = payload.submission.amount;
+    const recepient = payload.submission.recepient;
+    const sender = payload.user.name;
+
+    await transferEther(recepient, sender, amount);
+    return res.status(200).end({ok: true, message: 'ethers transfered successfully!'});
+
   } else {
     debug('Token mismatch');
     res.sendStatus(500);
