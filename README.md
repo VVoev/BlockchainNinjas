@@ -12,4 +12,6 @@ returns your wallet's address / returns a message seen only by you.
 
 # AppLifecycle
 
+--link to full quality image - https://image.ibb.co/fBrph7/BLNJAS.png
+
 ![Image of Main](https://preview.ibb.co/fvQt9n/BLNJAS.png)
