@@ -32,6 +32,10 @@ const registerUser = (username) => {
     return slackAccounts[username];
 };
 
+const toEther = (weiAmount) => {
+    return web3.utils.fromWei(weiAmount, 'ether');
+}
+
 const transferEther = async(fromUsername, toUsername, amount) => {
     const from = slackAccounts[fromUsername] ?
         slackAccounts[fromUsername] : registerUser(fromUsername);
@@ -44,18 +48,18 @@ const transferEther = async(fromUsername, toUsername, amount) => {
     const toBalance = await web3.eth.getBalance(to.address);
     console.log(web3.utils.fromWei(fromBalance, 'ether'), 'fromBalance');
     console.log(web3.utils.fromWei(toBalance, 'ether'), 'toBalance');
-    return send(from, to);
+    return send(from, to, amount);
 };
 
 const getBalance = async(username) => {
-    return web3.eth.getBalance(slackAccounts[username]);
+    return web3.eth.getBalance(slackAccounts[username].address);
 };
 
-function send(from, to) {
+function send(from, to, amount) {
     return new Promise((resolve, reject) => {
 
         const Tx = require('ethereumjs-tx')
-        // the address that will send the test transaction
+            // the address that will send the test transaction
         const addressFrom = from.address;
         const {
             privateKey
@@ -88,7 +92,7 @@ function send(from, to) {
             }
 
             // fire away!
-            sendSigned(txData, function (err, result) {
+            sendSigned(txData, function(err, result) {
                 if (err) {
                     console.log('error', err);
                     reject('Transaction failed!');
@@ -103,5 +107,6 @@ function send(from, to) {
 
 module.exports = {
     transferEther,
-    getBalance
+    getBalance,
+    toEther
 };
