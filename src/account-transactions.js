@@ -82,13 +82,15 @@ function send(from, to, amount) {
         // get the number of transactions sent so far so we can create a fresh nonce
         web3.eth.getTransactionCount(addressFrom).then(txCount => {
             // construct the transaction data
+        const weis = (amount * 1000000000000000000).toString();
+
             const txData = {
                 nonce: web3.utils.toHex(txCount).toString(),
                 gasLimit: web3.utils.toHex(25000).toString(),
                 gasPrice: web3.utils.toHex(10e10).toString(), // 10 Gwei
                 to: addressTo,
                 from: addressFrom,
-                value: web3.utils.toHex('500000000000000000')
+                value: web3.utils.toHex(weis)
             }
 
             // fire away!
