@@ -28,7 +28,7 @@ app.post('/', async (req, res) => {
   // and trigger ID from payload
   const { token, text, trigger_id } = req.body;
   console.log(token, text);
-
+  const senderId = req.body.user_id;
   let users;
 
   // check that the verification token matches expected value
@@ -37,7 +37,8 @@ app.post('/', async (req, res) => {
     var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
     
     var readUsers = await axios.get(url).then( res => {
-      users = res.data.members.filter(user => !user.is_bot && user.profile.email).map(user => {
+      console.log(res.data.members);
+      users = res.data.members.filter(user => user.profile.email && user.id != senderId).map(user => {
         return {
             label: user.real_name,
             value: user.name
