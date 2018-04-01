@@ -6,9 +6,10 @@ const bodyParser = require('body-parser');
 const qs = require('querystring');
 const debug = require('debug')('slash-command-template:index');
 const { transferEther, getBalance, toEther } = require('./account-transactions');
+const { IncomingWebhook, WebClient } = require('@slack/client');
 
 const app = express();
-
+ 
 /*
  * Parse application/x-www-form-urlencoded && application/json
  */
@@ -38,7 +39,7 @@ app.post('/', async(req, res) => {
         var url = 'https://slack.com/api/users.list?token=' + process.env.SLACK_ACCESS_TOKEN + '&pretty=1';
 
         var readUsers = await axios.get(url).then(res => {
-        users = res.data.members.filter(user => !user.is_both && user.name !== 'slackbot' && user.id != senderId).map(user => {
+        users = res.data.members.filter(user => user.profile.email && user.id != senderId).map(user => {
                 return {
                     label: user.real_name,
                     value: user.name
@@ -120,6 +121,12 @@ app.post('/interactive-component', async(req, res) => {
         // immediately respond with a empty 200 response to let
         // Slack know the command was received
         res.send('');
+        sendSuccessNotification({
+          "title": "EtherScan link",
+          "title_link": "enter link",
+          "text": `transaction started.`,
+          "color": "#7CD197"
+      })
 
         // create Helpdesk ticket
         const payload = JSON.parse(req.body.payload);
@@ -128,6 +135,11 @@ app.post('/interactive-component', async(req, res) => {
         const sender = payload.user.name;
 
         await transferEther(sender, recepient, amount);
+        setTimeout(() => sendSuccessNotification({
+          "image_url": "https://media.tenor.com/images/02ca5bd36fe406a776a1e007d009ef78/tenor.gif",
+          "text": `${sender} send ${amount} ether to ${recepient}.`,
+          "color": "#7CD197"
+      }), 1000);
         return res.status(200).end({ ok: true, message: 'ethers transfered successfully!' });
 
     } else {
@@ -139,3 +151,17 @@ app.post('/interactive-component', async(req, res) => {
 app.listen(process.env.PORT, () => {
     console.log(`App listening on port ${process.env.PORT}!`);
 })
+
+const sendSuccessNotification = (attachment) => {
+  const timeNotification = new IncomingWebhook('https://hooks.slack.com/services/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');
+timeNotification.send(
+  {"attachments": [
+    attachment
+]},
+  (error, resp) => {
+    if (error) {
+      return console.error(error);
+    }
+    console.log('Notification sent');
+  });
+}
